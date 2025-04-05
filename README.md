@@ -1,4 +1,4 @@
-# Azure Cross-Tenant Storage Acocunt Access via Private Endpoint using Private Link
+# Azure Cross-Tenant Storage Account Access via Private Endpoint using Private Link
 
 This document outlines two scenarios for securely accessing an Azure Storage Account in a customer tenant (Tenant B) from a provider tenant (Tenant A) using Private Endpoints, without exposing secrets.
 
