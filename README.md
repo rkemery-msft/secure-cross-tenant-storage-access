@@ -1,368 +1,204 @@
-# Azure Cross-Tenant Private Endpoint Access using Federated Identity and Managed Identity
+# Azure Cross-Tenant Access via Private Endpoint
 
-## Architecture Overview
+This document outlines two scenarios for securely accessing an Azure Storage Account in a customer tenant (Tenant B) from a provider tenant (Tenant A) using Private Endpoints, without exposing secrets.
 
-Managed Identity Scenario Architecture Image
-![Scenario A Architecture Diagram](https://uml.planttext.com/plantuml/png/ZLPTRo8t57r7uZzSKQaRL05gjazHWtQ0f49AqXIoMQdQ5pFZW9l1djeUicpP_zvx_J4Vm5QD5CKPdtjzVUxniJyOoxGjjtctymu-6WuvVx43gmPQh3SMShPNfUrsw2jO1Vvh9ZHFhL2osw6mfTtd75H1NmnS-07BOG1BiIroyI9u1ikzjEnBlzinhq8MJBCj52nzPMlkmoaZa-kSDn5cmpBr9kGQNbXkMbEfsXPAScbzEExWiZMTgpARA9rnFLMvqh3AItuAm0hMMfKoyw2SjdUCb2hZpKnhpVOdy-SI7GCpPjcAcQDadCkpeFCPZz0ijKetyzshD6L6d04TvQk1rC8PVn6IG_Arr1m8ka9kWUTyYmm3Ii28Z8FbaabhkXr77lJQyC_oub6B7RCSxeHyXINNEv7oVW-OWLK0-UMkh-79vO84C4ZjCBlkes3kI6TBMklwkji90e7U6N0F_kbs07-8VkWztuy-AVsQAvQvzNRRn4zNEe7Un-H-ZaKM8SMWP5lXgwFHAJuf2bZmjJ1MCv8qngPQ6JFmF0nOKVXm720k9l3St4YCWlaCBcBn7ilfUz8g_O5RgAlQIMuzb4P9t6P4HuflP5Oe8IqMPR2zIDEW25mNFEJ_rbmc1iuUbl2dRrVXF-NOhU4gLwlXSEWpPD8ar2cAVWU3mG3cqd9DXxfgXUQvOyLiH648u-58F0o7OqyfN45YZ5XBD81vXbiNTkzXWR8Mz9RZ_h6U33u9ky7wbkNgBxI5QseS_Ex6yrc_NWVhyXnTmQ94wvbB6C5KIOb0pFAaF9HsqyIIEe-dgGxaZJ9ne_8TDsXhZbQu_MFsW60OZBkTRyVwdS35jCG6RBr-5yuVlolW9heIS3pnq8ih9ccA1vLQco8wj9UbQT15-33vRxrD6dgRd6ZxXlg9_STbKUQuqe8NGuYdYxvLuJWEySv86fj9igsG_WJGQDAMp9BRia0MESf3o9gmIYe-2FyVnsMG_WiVzdCVVjDaDjHFWzCd8P65EkQo7zHcO359fh1GEQaSMzVURL1GN7FOofMKTgEq-8e2UHRC9VeVIx_lKs9a3tNpU1Crw6x8MZ9JPnw1XnfYu4UupTMRSP8XBB67fl26XWQFp6vWXvLKhkpu8wtY08k9peh5jEotMSEg4TigFu0CtUt1h_4KuPj0fhokXJYXmvkw0--AfSiznPreeSYMmz75sRwlpntFSN0xueboK5SN_E-I6mjuef_KAzrc0KELKLJ4NXBMbbeseCsiamg9vDzyIJVuUk0nFROzHf4ck7Q5__HPDXME1WJEJqA-umf-gIgedScbzCT5SzAb8N45LKM-PdYYwH1pOm9P3KgStT0IVXuf8KU-K-grB0A82l5c5558HcYLqq9izFpHNRgXaACgNK51UdTypMNc19RxeNl9aR8FiDomWkFV6JUf5kxr1WStzIi9v-g7wbaq3cvpWCfkHiUFXjD8UWUD_Irqg7HDDbjgbDi8dk-_6rGxrg6wG6Z90f-LGOtJ6d8c2RwNnhN37k38OjinyKqq3avty0v7xs8TaDWRz-kPIxJ6xXxWQL_4ZLEB3vNAHxJFWXpC2o5Y7AXrn4UD0rl3pW1RNX20T7iTK4Dh92NtgLx4slj0X8nTmS7TF7Lk_e8ihdzsU-wbYEQExHLvNlftqCwjYXBoGYA9VS2_-03_5m00)
+1.  **Federated Managed Identity (Scenario A):** Uses Azure's workload identity federation to allow a Managed Identity in Tenant A to access storage in Tenant B.
+2.  **Client Credentials (Scenario B):** Uses a Service Principal created and managed by Tenant B, with credentials provided to Tenant A.
 
-Client Credentials Scenario Architecture Diagram
-![Scenario B Architecture Diagram](https://uml.planttext.com/plantuml/png/VLTjRo8t4FwEn7yOvQG6L2sq-LITBkXuoKb8IOx2DPMgIfNP7S35s5lRIygL_lVEsBkmI-X5IbYypupdvPd7paVdXVN5JhLRj_2BGr2uyeatYPNhZGSb3gRmxHQlWZSGLpDfCVNIw7QBpHR-e11CpYiEEl51A4XW8NUvaYk96ImEsek_k-sMsqgT2ojsa8jqAzOOpTcZq6k5TOJRYCoyIhs6bL2kyIerkzner3wQKmPtZTVA5Dd8s0pjs2XZOQaAV0kW2DRM53gB8CNfNIAroR3kQMt5uStxQuukWPdmOYdSXJD4VHLqtUC5MgJUsBg_9vEcmiahe0j_ru2d7jGzJeJTVhQqZDUX5tuZ56xX4ttvWbfe3oDOp9WeSzoPFN71KUUvgITt3eG3ly43x0B1fFPeLsWHNgNVG8OhKQWp6s-XMNs7EVpqGtETmjXMwv6c4rn9ZJ3yMf1V3dj9_05Kk2CM0JbsCaFm8MJNRWM2m4qJ_hlkpApS2u_mAFKM5cZtCiNk3IUmB45nk_lxAlqXa97PatVRfQ5uv5bQy5xtz-rMEGHmSmLy0_-qMq0_d2JSl3prVpLsgup8mdxxtR3n-XazTFBIEDbhz34kVceWgnGUT9ORgZLbvOWY54QIbxdaUDLYyho0ts8TyhYag0ozfJBBNgyNJJFjXbm2jhw594bW_l3q-ULX0XkPPQY1JHoiY1-vSPB5Wib0mARLb4d0EdAgZ4KbWiXiPEwY0SEf3X3rAXd4PE4zp0lIegc6FeoDriHMujqN4mqeEKYAl8QUOAxCWI1J7I6Sn0M66rvp4X2zGN16sw4pQe-En30K4ZxzF7acB2I3TklVIqQCe3CkgEIxo8Xv8Ft_KgAEFb6YqWcugNOSfYcD8JSp9NJPK96c9GlAXL4qBzdzeBqLC9r0fzehWf7NI-Xfr6chI7SWEkXKvaBHPcEBWekxF43JXyj7yAvI3dOKTAYMrJ3RIHsWWfz6pVOlKi9PQLWzq1VvkTyHJTy7OO_tq1ab4V9Z5s8ur8SPVCzVY71Uqk7nrhIiHzt-hWj3v-IQg3CV3SSmDugfJcrSpFuOTQCFthFNi1yMVcEi_4fLU94Yc3Pp6PlTpkXlvL4BfWwcU7AUQ4fezb0nEHoyPqwDhN4kAQjwXZZu3Zufy-e2fnZBaP16l9A6m4oGhkufs9CGXh32P2GSKILc5553yUenB6ksZHnAaEChGyMPgQQhXaxn70kNZRkJXg4EmKAZxvsnagpDjJPso_8rPZwoDJQIdJ8FvlXNWSxJ26vHCqsZg-caly3KabAo_bHTBHqauV8pOETdNtVionTMdrpDCRTqvj0fKJceCfhGKF8SedDbEXniY9NkCPfS1zKWvoM80cL9VJHcM-Gbiieg2ak5f33AgeQsLJsPpiAHL8OJ8ZndHkmRPd-I610nXRNcjJeAYJMFk4QT1Mwe-1ZsPMOUOR4HETBd15rgPRZFmJ6y-i0zV__kT54Qb4foX9EKz2-FsBUMV3CQnAFbUA8aIsXXYIbzU7cYFqJuVgZEaVAWeLZIwPt1CnjbvxYk-AOxqk2iZqUu4CXcFDKzQ53Aqp7A4j-5RHCPfMnGqyDZxO9pgOobBH4W_CQw3ha9R7R8gxBG0K5fVaZegQ9idqj1briAFf2e0XBos1pWVcqSkLZX50lNcKRDQg3BofNJVlo6C9JRzteCUpHhcbSLTrx9THI5VZp_YaYK-jQgnB_PbxnnGKhbZ0eGV7LOFhjNonTkc7HQ4BcaKiHhItRx424HEDAO2VwHFkaVWly0)
-
-**I. Tenant A (Provider Tenant - `{PROVIDER_TENANT_ID}`)**
-
-* **Virtual Network (`provider-vnet`)**
-    * Hosts the application workload (e.g., on a VM).
-    * Contains the network interface for the Private Endpoint connecting to Tenant B's storage.
-    * Is linked to the Private DNS Zone for resolving the storage account's private IP.
-* **Compute Resource (e.g., Virtual Machine)**
-    * Runs the application code (e.g., the Python script).
-    * Has the User-Assigned Managed Identity (`provider-uami`) assigned to it.
-    * Initiates the authentication flow and storage access requests.
-* **User-Assigned Managed Identity (UAMI - `provider-uami`)**
-    * Identity for the workload in Tenant A (`{UAMI_CLIENT_ID}`, `{UAMI_OBJECT_ID}`).
-    * Used to acquire the initial token from Tenant A's Microsoft Entra ID.
-    * Is the identity trusted by the Federated Credential configured on the App Registration.
-* **App Registration (`cross-tenant-federation-app`)**
-    * Registered in Tenant A (`{APP_REG_CLIENT_ID}`).
-    * Configured as **Multi-tenant**.
-    * Holds the **Federated Credential** configuration.
-* **Federated Credential (on App Registration)**
-    * Establishes trust between the App Registration and the UAMI.
-    * Configuration:
-        * **Issuer:** `https://login.microsoftonline.com/{PROVIDER_TENANT_ID}/v2.0`
-        * **Subject:** `{UAMI_OBJECT_ID}` (Object ID of the UAMI)
-        * **Audience:** `api://AzureADTokenExchange`
-* **Private Endpoint (`storage-pe`)**
-    * Created within `provider-vnet`.
-    * Targets the Storage Account in Tenant B using its **Resource ID**.
-    * Requires approval from the Storage Account owner in Tenant B.
-    * Provides a private IP address within `provider-vnet` for accessing the storage account.
-* **Private DNS Zone (`privatelink.blob.core.windows.net`)**
-    * Linked to `provider-vnet`.
-    * Contains an 'A' record mapping the storage account's FQDN (`{CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net`) to the private IP address of the `storage-pe`.
-* **Microsoft Entra ID (Tenant A)**
-    * Authenticates the UAMI.
-    * Issues the initial Managed Identity token (Audience: `api://AzureADTokenExchange`).
-
-**II. Tenant B (Customer Tenant - `{CUSTOMER_TENANT_ID}`)**
-
-* **Storage Account (`CUSTOMER_STORAGE_ACCOUNT_NAME`)**
-    * The target resource containing the data (e.g., blobs).
-    * **Public Network Access** should be **Disabled** for Private Endpoint security.
-    * Owner provides its **Resource ID** to Tenant A for PE creation.
-    * Owner approves the incoming **Private Endpoint Connection** request from Tenant A.
-* **Private Endpoint Connection**
-    * A sub-resource within the Storage Account's networking settings representing the approved connection from Tenant A's Private Endpoint.
-* **Enterprise Application (`ENTERPRISE_APP_IN_TENANT_B`)**
-    * Represents the Provider's App Registration (`{APP_REG_CLIENT_ID}`) within Tenant B.
-    * Created automatically when a Tenant B administrator **grants Admin Consent** via the specially constructed URL.
-* **RBAC Role Assignment**
-    * Configured on the **Storage Account** -> Access Control (IAM).
-    * Grants necessary permissions (e.g., `Storage Blob Data Contributor`) **to** the `ENTERPRISE_APP_IN_TENANT_B`. This is how the federated identity gets authorization.
-* **Microsoft Entra ID (Tenant B)**
-    * Receives the token exchange request from the application in Tenant A.
-    * Validates the `client_assertion` (the MI token from Tenant A) against the federated credential configured on the `client_id` (the Provider's App Reg ID).
-    * Issues the final **federated access token** (Audience: `https://storage.azure.com/`) valid for the storage account, based on the identity of the `ENTERPRISE_APP_IN_TENANT_B`.
-* **Tenant B Administrator**
-    * Performs the one-time Admin Consent action using the URL.
-    * Assigns the RBAC role to the Enterprise Application on the Storage Account.
-    * Approves the Private Endpoint connection request.
-
-**III. Key Interactions / Flow**
-
-1.  **Setup:** Configuration involves creating identities, apps, federation, PE, DNS, consent, and RBAC roles as described above.
-2.  **Runtime Authentication & Access:**
-    * The application on the VM in Tenant A uses its assigned UAMI (`{UAMI_CLIENT_ID}`) to request a token from Tenant A Entra ID for audience `api://AzureADTokenExchange`.
-    * The application then makes a POST request to the Tenant B Entra ID token endpoint (`https://login.microsoftonline.com/{CUSTOMER_TENANT_ID}/oauth2/v2.0/token`). This request includes:
-        * `client_id`: `{APP_REG_CLIENT_ID}` (Provider's App Reg)
-        * `client_assertion`: The token obtained from the UAMI in the previous step.
-        * `client_assertion_type`: `urn:ietf:params:oauth:client-assertion-type:jwt-bearer`
-        * `scope`: `https://storage.azure.com/.default`
-        * `grant_type`: `client_credentials`
-    * Tenant B Entra ID validates the assertion based on the federated credential configured on the `{APP_REG_CLIENT_ID}` App Reg (which trusts the UAMI `{UAMI_OBJECT_ID}`).
-    * If valid, Tenant B Entra ID issues an access token scoped for Azure Storage. This token represents the identity of the `ENTERPRISE_APP_IN_TENANT_B`.
-    * The application in Tenant A performs a DNS lookup for `{CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net`. The Private DNS Zone in Tenant A resolves this to the Private IP of the `storage-pe`.
-    * The application connects to the Storage Account via the Private IP address.
-    * It presents the **federated access token** (obtained from Tenant B) in the `Authorization: Bearer <token>` header.
-    * Azure Storage validates the token and authorizes the request based on the RBAC roles assigned to the `ENTERPRISE_APP_IN_TENANT_B` in Tenant B.
-
-This document outlines an end-to-end scenario for securely accessing an Azure Storage Account in a customer tenant (Tenant B) from a provider tenant (Tenant A) using Private Endpoints and workload identity federation with a User-Assigned Managed Identity (UAMI)—without using secrets.
-
-In this solution:
-- **Tenant A (Provider)** hosts the application workload running as a UAMI, deploys the Private Endpoint (and associated VNet), and uses its UAMI along with a multi-tenant App Registration (configured with federated credentials) to initiate access.
-- **Tenant B (Customer)** owns the Storage Account, which is secured via the Private Endpoint connection originating from Tenant A. Tenant B grants admin consent to the Provider’s app and assigns RBAC roles on the Storage Account to authorize access.
-- Tenant B also provides the Storage Account Resource ID so that the Private Endpoint connection request initiated from Tenant A can be linked and approved.
-
-> **Note:** This solution leverages workload identity federation to securely exchange tokens across tenants based on a trust relationship configured via federated credentials. For background, see [Workload identity federation](https://learn.microsoft.com/entra/workload-id/workload-identity-federation).
+> **Note:** Replace placeholder values (like `{PROVIDER_TENANT_ID}`, `{UAMI_CLIENT_ID}`, etc.) with your actual values throughout this guide.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
+- [Architecture Diagrams](#architecture-diagrams)
+  - [Scenario A: Federated Managed Identity](#scenario-a-federated-managed-identity)
+  - [Scenario B: Client Credentials](#scenario-b-client-credentials)
 - [Prerequisites](#prerequisites)
 - [Setup Instructions](#setup-instructions)
-  - [Tenant A (Provider) Setup](#tenant-a-provider-setup)
-  - [Generate Admin Consent URL (For Tenant B Admin)](#generate-admin-consent-url-for-tenant-b-admin)
-  - [Tenant B (Customer) Setup](#tenant-b-customer-setup)
-  - [Private Endpoint & DNS Setup](#private-endpoint--dns-setup)
-- [Testing the Federation Flow](#testing-the-federation-flow)
-  - [Testing with Azure CLI (Partial Verification)](#testing-with-azure-cli-partial-verification)
-  - [Testing End-to-End (Python Example)](#testing-end-to-end-python-example)
-- [Alternative: Client Credentials Provided by Tenant B](#alternative-client-credentials-provided-by-tenant-b)
+  - [Scenario A: Federated Managed Identity Setup](#scenario-a-federated-managed-identity-setup)
+    - [Tenant A (Provider) Configuration](#tenant-a-provider-configuration)
+    - [Generate Admin Consent URL](#generate-admin-consent-url)
+    - [Tenant B (Customer) Configuration](#tenant-b-customer-configuration)
+  - [Scenario B: Client Credentials Setup](#scenario-b-client-credentials-setup)
+    - [Tenant B (Customer) Configuration](#tenant-b-customer-configuration-1)
+    - [Tenant A (Provider) Configuration](#tenant-a-provider-configuration-1)
+  - [Common: Private Endpoint & DNS Setup](#common-private-endpoint--dns-setup)
+- [Testing Access](#testing-access)
+  - [Testing Scenario A (Federation - Python Example)](#testing-scenario-a-federation---python-example)
+  - [Testing Scenario B (Client Credentials - CLI Example)](#testing-scenario-b-client-credentials---cli-example)
+  - [Partial Verification with CLI (Federation Scenario)](#partial-verification-with-cli-federation-scenario)
 - [Troubleshooting](#troubleshooting)
 - [References](#references)
 - [License](#license)
 
 ---
 
-## Overview
+## Architecture Diagrams
 
-This solution enables a service running under a UAMI in **Tenant A (Provider)** to securely access a Storage Account in **Tenant B (Customer)** by:
-- Restricting network access using a **Private Endpoint** established from Tenant A's VNet to Tenant B's Storage Account.
-- Configuring **Private DNS** in Tenant A so that the Storage Account’s FQDN resolves to its private IP address within Tenant A's VNet.
-- Setting up a **multi-tenant App Registration** in Tenant A with **federated credentials** trusting the UAMI in Tenant A.
-- Having a Tenant B admin grant **admin consent** to the Provider's App Registration, creating a corresponding Enterprise Application (Service Principal) in Tenant B.
-- Assigning Azure **RBAC roles** (e.g., Storage Blob Data Contributor) on the Storage Account in Tenant B to the Enterprise Application.
-- Performing a **token exchange**: The UAMI in Tenant A acquires a token, which is then presented (as an assertion) to Tenant B's Microsoft Entra ID endpoint. Based on the federation trust, Tenant B issues a new token valid for accessing the Storage Account via the Enterprise Application's permissions.
+### Scenario A: Federated Managed Identity
 
----
+![Scenario A Architecture Diagram](https://uml.planttext.com/plantuml/png/ZLPTRo8t57r7uZzSKQaRL05gjazHWtQ0f49AqXIoMQdQ5pFZW9l1djeUicpP_zvx_J4Vm5QD5CKPdtjzVUxniJyOoxGjjtctymu-6WuvVx43gmPQh3SMShPNfUrsw2jO1Vvh9ZHFhL2osw6mfTtd75H1NmnS-07BOG1BiIroyI9u1ikzjEnBlzinhq8MJBCj52nzPMlkmoaZa-kSDn5cmpBr9kGQNbXkMbEfsXPAScbzEExWiZMTgpARA9rnFLMvqh3AItuAm0hMMfKoyw2SjdUCb2hZpKnhpVOdy-SI7GCpPjcAcQDadCkpeFCPZz0ijKetyzshD6L6d04TvQk1rC8PVn6IG_Arr1m8ka9kWUTyYmm3Ii28Z8FbaabhkXr77lJQyC_oub6B7RCSxeHyXINNEv7oVW-OWLK0-UMkh-79vO84C4ZjCBlkes3kI6TBMklwkji90e7U6N0F_kbs07-8VkWztuy-AVsQAvQvzNRRn4zNEe7Un-H-ZaKM8SMWP5lXgwFHAJuf2bZmjJ1MCv8qngPQ6JFmF0nOKVXm720k9l3St4YCWlaCBcBn7ilfUz8g_O5RgAlQIMuzb4P9t6P4HuflP5Oe8IqMPR2zIDEW25mNFEJ_rbmc1iuUbl2dRrVXF-NOhU4gLwlXSEWpPD8ar2cAVWU3mG3cqd9DXxfgXUQvOyLiH648u-58F0o7OqyfN45YZ5XBD81vXbiNTkzXWR8Mz9RZ_h6U33u9ky7wbkNgBxI5QseS_Ex6yrc_NWVhyXnTmQ94wvbB6C5KIOb0pFAaF9HsqyIIEe-dgGxaZJ9ne_8TDsXhZbQu_MFsW60OZBkTRyVwdS35jCG6RBr-5yuVlolW9heIS3pnq8ih9ccA1vLQco8wj9UbQT15-33vRxrD6dgRd6ZxXlg9_STbKUQuqe8NGuYdYxvLuJWEySv86fj9igsG_WJGQDAMp9BRia0MESf3o9gmIYe-2FyVnsMG_WiVzdCVVjDaDjHFWzCd8P65EkQo7zHcO359fh1GEQaSMzVURL1GN7FOofMKTgEq-8e2UHRC9VeVIx_lKs9a3tNpU1Crw6x8MZ9JPnw1XnfYu4UupTMRSP8XBB67fl26XWQFp6vWXvLKhkpu8wtY08k9peh5jEotMSEg4TigFu0CtUt1h_4KuPj0fhokXJYXmvkw0--AfSiznPreeSYMmz75sRwlpntFSN0xueboK5SN_E-I6mjuef_KAzrc0KELKLJ4NXBMbbeseCsiamg9vDzyIJVuUk0nFROzHf4ck7Q5__HPDXME1WJEJqA-umf-gIgedScbzCT5SzAb8N45LKM-PdYYwH1pOm9P3KgStT0IVXuf8KU-K-grB0A82l5c5558HcYLqq9izFpHNRgXaACgNK51UdTypMNc19RxeNl9aR8FiDomWkFV6JUf5kxr1WStzIi9v-g7wbaq3cvpWCfkHiUFXjD8UWUD_Irqg7HDDbjgbDi8dk-_6rGxrg6wG6Z90f-LGOtJ6d8c2RwNnhN37k38OjinyKqq3avty0v7xs8TaDWRz-kPIxJ6xXxWQL_4ZLEB3vNAHxJFWXpC2o5Y7AXrn4UD0rl3pW1RNX20T7iTK4Dh92NtgLx4slj0X8nTmS7TF7Lk_e8ihdzsU-wbYEQExHLvNlftqCwjYXBoGYA9VS2_-03_5m00)
 
-## Architecture
+* **Key Components:** UAMI, multi-tenant App Registration with Federated Credential (Tenant A); Enterprise Application, Storage Account, RBAC assignment (Tenant B).
+* **Flow:** UAMI token (Tenant A) -> Exchanged for Federated Token (Tenant B) -> Access Storage (Tenant B) via PE.
 
-**Tenant A (Provider):**
-- **Virtual Network (`provider-vnet`):** Hosts the application workload and the Private Endpoint NIC.
-- **Private DNS Zone (`privatelink.blob.core.windows.net`):** Linked to `provider-vnet`. Contains A record for the Storage Account's private IP.
-- **User Assigned Managed Identity (UAMI):**
-  - Example Name: `provider-uami`
-  - **Tenant A ID:** `PROVIDER_TENANT_ID` (e.g., `00000000-0000-0000-0000-000000000001`)
-  - **Client ID:** `UAMI_CLIENT_ID` (e.g., `11111111-1111-1111-1111-111111111111`)
-  - **Object ID:** `UAMI_OBJECT_ID` (e.g., `22222222-2222-2222-2222-222222222222`) *(used as federated credential subject)*
-- **App Registration:**
-  - Example Name: `cross-tenant-federation-app`
-  - **Supported Account Types:** Multi-tenant (Accounts in any organizational directory)
-  - **Client ID:** `APP_REG_CLIENT_ID` (e.g., `33333333-3333-3333-3333-333333333333`)
-- **Federated Credential (on App Registration):**
-  - **Issuer:** `https://login.microsoftonline.com/{PROVIDER_TENANT_ID}/v2.0`
-  - **Subject:** `UAMI_OBJECT_ID` (Object ID of the UAMI)
-  - **Audience:** `api://AzureADTokenExchange`
+### Scenario B: Client Credentials
 
-**Tenant B (Customer):**
-- **Storage Account:**
-  - Name: `CUSTOMER_STORAGE_ACCOUNT_NAME` (e.g., `custstorageacct`)
-  - **Public Network Access:** Disabled
-  - **Resource ID:** `/subscriptions/{CUSTOMER_SUBSCRIPTION_ID}/resourceGroups/{CUSTOMER_RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/{CUSTOMER_STORAGE_ACCOUNT_NAME}` (Provided to Tenant A for PE creation)
-- **Private Endpoint Connection:**
-  - Connection initiated from Tenant A's Private Endpoint, approved by Tenant B Storage Account owner.
-- **Enterprise Application:**
-  - Created automatically when Tenant B admin grants consent to `APP_REG_CLIENT_ID`. Represents the provider's app within Tenant B. Name often matches `cross-tenant-federation-app`. Let's call its representation `ENTERPRISE_APP_IN_TENANT_B`.
-- **RBAC Role Assignment:**
-  - `ENTERPRISE_APP_IN_TENANT_B` is assigned an IAM role (e.g., Storage Blob Data Contributor) on the `CUSTOMER_STORAGE_ACCOUNT_NAME`.
-- **Tenant B ID:** `CUSTOMER_TENANT_ID` (e.g., `44444444-4444-4444-4444-444444444444`)
+![Scenario B Architecture Diagram](https://uml.planttext.com/plantuml/png/VLTjRo8t4FwEn7yOvQG6L2sq-LITBkXuoKb8IOx2DPMgIfNP7S35s5lRIygL_lVEsBkmI-X5IbYypupdvPd7paVdXVN5JhLRj_2BGr2uyeatYPNhZGSb3gRmxHQlWZSGLpDfCVNIw7QBpHR-e11CpYiEEl51A4XW8NUvaYk96ImEsek_k-sMsqgT2ojsa8jqAzOOpTcZq6k5TOJRYCoyIhs6bL2kyIerkzner3wQKmPtZTVA5Dd8s0pjs2XZOQaAV0kW2DRM53gB8CNfNIAroR3kQMt5uStxQuukWPdmOYdSXJD4VHLqtUC5MgJUsBg_9vEcmiahe0j_ru2d7jGzJeJTVhQqZDUX5tuZ56xX4ttvWbfe3oDOp9WeSzoPFN71KUUvgITt3eG3ly43x0B1fFPeLsWHNgNVG8OhKQWp6s-XMNs7EVpqGtETmjXMwv6c4rn9ZJ3yMf1V3dj9_05Kk2CM0JbsCaFm8MJNRWM2m4qJ_hlkpApS2u_mAFKM5cZtCiNk3IUmB45nk_lxAlqXa97PatVRfQ5uv5bQy5xtz-rMEGHmSmLy0_-qMq0_d2JSl3prVpLsgup8mdxxtR3n-XazTFBIEDbhz34kVceWgnGUT9ORgZLbvOWY54QIbxdaUDLYyho0ts8TyhYag0ozfJBBNgyNJJFjXbm2jhw594bW_l3q-ULX0XkPPQY1JHoiY1-vSPB5Wib0mARLb4d0EdAgZ4KbWiXiPEwY0SEf3X3rAXd4PE4zp0lIegc6FeoDriHMujqN4mqeEKYAl8QUOAxCWI1J7I6Sn0M66rvp4X2zGN16sw4pQe-En30K4ZxzF7acB2I3TklVIqQCe3CkgEIxo8Xv8Ft_KgAEFb6YqWcugNOSfYcD8JSp9NJPK96c9GlAXL4qBzdzeBqLC9r0fzehWf7NI-Xfr6chI7SWEkXKvaBHPcEBWekxF43JXyj7yAvI3dOKTAYMrJ3RIHsWWfz6pVOlKi9PQLWzq1VvkTyHJTy7OO_tq1ab4V9Z5s8ur8SPVCzVY71Uqk7nrhIiHzt-hWj3v-IQg3CV3SSmDugfJcrSpFuOTQCFthFNi1yMVcEi_4fLU94Yc3Pp6PlTpkXlvL4BfWwcU7AUQ4fezb0nEHoyPqwDhN4kAQjwXZZu3Zufy-e2fnZBaP16l9A6m4oGhkufs9CGXh32P2GSKILc5553yUenB6ksZHnAaEChGyMPgQQhXaxn70kNZRkJXg4EmKAZxvsnagpDjJPso_8rPZwoDJQIdJ8FvlXNWSxJ26vHCqsZg-caly3KabAo_bHTBHqauV8pOETdNtVionTMdrpDCRTqvj0fKJceCfhGKF8SedDbEXniY9NkCPfS1zKWvoM80cL9VJHcM-Gbiieg2ak5f33AgeQsLJsPpiAHL8OJ8ZndHkmRPd-I610nXRNcjJeAYJMFk4QT1Mwe-1ZsPMOUOR4HETBd15rgPRZFmJ6y-i0zV__kT54Qb4foX9EKz2-FsBUMV3CQnAFbUA8aIsXXYIbzU7cYFqJuVgZEaVAWeLZIwPt1CnjbvxYk-AOxqk2iZqUu4CXcFDKzQ53Aqp7A4j-5RHCPfMnGqyDZxO9pgOobBH4W_CQw3ha9R7R8gxBG0K5fVaZegQ9idqj1briAFf2e0XBos1pWVcqSkLZX50lNcKRDQg3BofNJVlo6C9JRzteCUpHhcbSLTrx9THI5VZp_YaYK-jQgnB_PbxnnGKhbZ0eGV7LOFhjNonTkc7HQ4BcaKiHhItRx424HEDAO2VwHFkaVWly0)
+
+* **Key Components:** Tenant B creates and manages a **Service Principal** with credentials (secret/cert). This SP is granted RBAC roles on the Storage Account. Tenant A application uses these provided credentials directly.
+* **Flow:** Application in Tenant A -> Authenticates directly to Tenant B Entra ID using provided Client ID/Secret -> Access Storage (Tenant B) via PE using the obtained token.
 
 ---
 
 ## Prerequisites
 
-- **Tenant A (Provider):**
-  - An existing UAMI with known Client ID, Object ID.
-  - An existing multi-tenant App Registration.
-  - Permissions to configure Federated Credentials on the App Registration.
-  - A Virtual Network and subnet for the Private Endpoint.
-  - Permissions to create Private Endpoints and Private DNS Zones.
-- **Tenant B (Customer):**
-  - An existing Storage Account intended for private access. Note its Resource ID.
-  - Permissions to approve Private Endpoint connections on the Storage Account.
-  - Permissions to grant admin consent for applications.
-  - Permissions to assign IAM roles on the Storage Account.
-- **Tools & Libraries:**
-  - Azure CLI (`az`) installed and authenticated.
-  - Python 3.8+ installed.
-  * Required Python packages:
-      ```bash
-      pip install requests azure-identity azure-storage-blob
-      ```
+-   **Azure CLI (`az`)** installed and authenticated.
+-   **Python 3.8+** installed.
+-   **Required Python packages:**
+    ```bash
+    pip install requests azure-identity azure-storage-blob
+    ```
+-   **Permissions:** Appropriate permissions in both Tenant A and Tenant B to manage identities, applications, network resources (VNets, Private Endpoints, DNS Zones), and storage accounts (including IAM/RBAC and PE connection approval).
 
 ---
 
 ## Setup Instructions
 
-### Tenant A (Provider) Setup
+Follow the relevant setup steps based on the chosen scenario. The Private Endpoint setup is common to both.
 
-1.  **Identify/Create User Assigned Managed Identity (UAMI):**
-    * Ensure you have a UAMI in Tenant A. Record its details:
-        * **Tenant A ID:** `{PROVIDER_TENANT_ID}`
-        * **UAMI Client ID:** `{UAMI_CLIENT_ID}`
-        * **UAMI Object ID:** `{UAMI_OBJECT_ID}`
+### Scenario A: Federated Managed Identity Setup
 
-2.  **Identify/Create Multi-Tenant App Registration:**
-    * Ensure you have an App Registration in Tenant A.
-    * Verify **Supported Account Types** is set to "Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant)".
-    * Record its **Client ID:** `{APP_REG_CLIENT_ID}`
+#### Tenant A (Provider) Configuration
 
-3.  **Add Federated Credential to App Registration:**
-    * In the App Registration (`{APP_REG_CLIENT_ID}`), navigate to **Certificates & secrets → Federated credentials** (tab).
-    * Click **Add credential**.
-    * Configure the fields:
-        * **Federated credential scenario:** Other issuer
-        * **Issuer:** `https://login.microsoftonline.com/{PROVIDER_TENANT_ID}/v2.0`
-        * **Subject:** `{UAMI_OBJECT_ID}` (Object ID of the UAMI)
-        * **Audience:** `api://AzureADTokenExchange`
-        * **Name:** (Provide a descriptive name, e.g., `uami-federation`)
-    * Click **Add**.
+1.  **Identify/Create UAMI:** Ensure a UAMI exists in Tenant A. Note its **Client ID** (`{UAMI_CLIENT_ID}`) and **Object ID** (`{UAMI_OBJECT_ID}`). Note the **Tenant A ID** (`{PROVIDER_TENANT_ID}`).
+2.  **Identify/Create App Registration:** Ensure a multi-tenant App Registration exists in Tenant A. Note its **Client ID** (`{APP_REG_CLIENT_ID}`).
+3.  **Add Federated Credential:** On the App Registration (`{APP_REG_CLIENT_ID}`), add a Federated Credential:
+    * **Issuer:** `https://login.microsoftonline.com/{PROVIDER_TENANT_ID}/v2.0`
+    * **Subject:** `{UAMI_OBJECT_ID}` (UAMI's Object ID)
+    * **Audience:** `api://AzureADTokenExchange`
 
-### Generate Admin Consent URL (For Tenant B Admin)
+#### Generate Admin Consent URL
 
-Construct the following URL manually, replacing the placeholders:
+Construct this URL for the Tenant B admin:
 
 `https://login.microsoftonline.com/{CUSTOMER_TENANT_ID}/adminconsent?client_id={APP_REG_CLIENT_ID}&redirect_uri=https://localhost`
 
-* `{CUSTOMER_TENANT_ID}`: Tenant ID for Tenant B.
-* `{APP_REG_CLIENT_ID}`: Client ID of the App Registration from Tenant A.
+#### Tenant B (Customer) Configuration
 
-Provide this URL to an administrator in Tenant B.
+1.  **Grant Admin Consent:** The Tenant B admin uses the URL above to consent, creating an **Enterprise Application** (`ENTERPRISE_APP_IN_TENANT_B`) in Tenant B.
+2.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> IAM, assign the required role (e.g., `Storage Blob Data Contributor`) to the `ENTERPRISE_APP_IN_TENANT_B`.
+3.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A for Private Endpoint creation.
 
-### Tenant B (Customer) Setup
+### Scenario B: Client Credentials Setup
 
-1.  **Grant Admin Consent:**
-    * The Tenant B administrator opens the Admin Consent URL in a browser.
-    * They sign in with Tenant B admin credentials.
-    * Review the (likely minimal) permissions requested and click **Accept**.
-    * This creates the corresponding Enterprise Application (Service Principal) for the provider's app in Tenant B.
+#### Tenant B (Customer) Configuration
 
-2.  **Verify Enterprise Application:**
-    * Confirm the Enterprise Application now exists in **Tenant B → Microsoft Entra ID → Enterprise Applications**. Note its name (usually matches the App Reg name). Let's call this `ENTERPRISE_APP_IN_TENANT_B`.
+1.  **Create Service Principal:** Create a new App Registration and corresponding Service Principal (`TENANT_B_SP`) *within Tenant B*.
+2.  **Generate Credentials:** Create a client secret (or certificate) for `TENANT_B_SP`. Securely store the secret value.
+3.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> IAM, assign the required role (e.g., `Storage Blob Data Contributor`) directly to the `TENANT_B_SP`.
+4.  **Provide Credentials:** Securely share the **Tenant B ID** (`{CUSTOMER_TENANT_ID}`), the **Service Principal Client ID** (`{TENANT_B_SP_CLIENT_ID}`), and the **Client Secret** with the application owner in Tenant A.
+5.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A for Private Endpoint creation.
 
-3.  **Assign RBAC Role on Storage Account:**
-    * Navigate to the **Storage Account** in Tenant B.
-    * Go to **Access Control (IAM)**.
-    * Click **Add** → **Add role assignment**.
-    * Select a suitable role (e.g., `Storage Blob Data Contributor`, `Storage Blob Data Reader`).
-    * Click **Next**.
-    * Assign access to: **User, group, or service principal**.
-    * Click **+ Select members**. Search for and select `ENTERPRISE_APP_IN_TENANT_B`.
-    * Click **Select**.
-    * Click **Review + assign**.
+#### Tenant A (Provider) Configuration
 
-4.  **Provide Storage Account Resource ID:**
-    * Provide the full **Resource ID** of the Storage Account to the team/person setting up the Private Endpoint in Tenant A. Format: `/subscriptions/{SUBSCRIPTION_ID}/resourceGroups/{RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/{STORAGE_ACCOUNT_NAME}`
+1.  **Store Credentials:** Securely store/configure the credentials received from Tenant B for the application to use (e.g., environment variables, Key Vault).
 
-### Private Endpoint & DNS Setup
-
-*This can happen in parallel or after the Entra ID/RBAC setup.*
+### Common: Private Endpoint & DNS Setup
 
 1.  **Tenant A: Create Private Endpoint:**
-    * Initiate the creation of a Private Endpoint within a VNet (`provider-vnet`) in Tenant A.
-    * During creation:
-        * Select **Connect to an Azure resource by resource ID or alias**.
-        * Paste the **Storage Account Resource ID** provided by Tenant B.
-        * Target sub-resource should typically be `blob`.
-        * Select the appropriate VNet and subnet in Tenant A.
-        * Choose **Integrate with private DNS zone** and select or create the zone `privatelink.blob.core.windows.net`, ensuring it's linked to `provider-vnet`.
-    * A connection request is sent to the Storage Account in Tenant B.
-
+    * In Tenant A's VNet (`provider-vnet`), create a Private Endpoint.
+    * Connect using the **Resource ID** of the Tenant B Storage Account.
+    * Target sub-resource: `blob`.
+    * Integrate with Private DNS Zone `privatelink.blob.core.windows.net` linked to `provider-vnet`.
 2.  **Tenant B: Approve Private Endpoint Connection:**
-    * Navigate to the **Storage Account** in Tenant B.
-    * Go to **Networking** → **Private endpoint connections**.
-    * Find the pending connection request initiated from Tenant A.
-    * Select it and click **Approve**.
+    * On the Storage Account -> Networking -> Private endpoint connections, **Approve** the request from Tenant A.
 
 ---
 
-## Testing the Federation Flow
+## Testing Access
 
-### Testing with Azure CLI (Partial Verification)
+Ensure tests are run from a location with network connectivity to the Private Endpoint (e.g., the VM in `provider-vnet`).
 
-You can use the Azure CLI *on a machine associated with the UAMI in Tenant A* (e.g., a VM with the UAMI assigned) to verify the initial steps.
+### Testing Scenario A (Federation - Python Example)
 
-1.  **Login as UAMI:**
+* Use the accompanying Python script (`federated_storage_access.py`).
+* Configure placeholders (`UAMI_CLIENT_ID`, `APP_REG_CLIENT_ID`, tenant IDs, storage details).
+* The script performs: MI Token Acquisition -> Token Exchange -> Storage SDK Client Creation (using `BearerTokenCredential`) -> List Blobs.
+
+### Testing Scenario B (Client Credentials - CLI Example)
+
+* Use credentials provided by Tenant B.
+* Run from a machine with network access to the Private Endpoint (e.g., VM in Tenant A, assuming appropriate routing/NSGs).
+
     ```bash
-    # Ensure you are on the VM/resource with the UAMI assigned
-    # Use -u or --username for the UAMI client ID
-    az login --identity -u {UAMI_CLIENT_ID}
-    ```
-    *(Verify the output shows login succeeded for the correct UAMI and Tenant A)*
+    # Login using SP details provided by Tenant B
+    az login --service-principal \
+        -u {TENANT_B_SP_CLIENT_ID} \
+        -p {TENANT_B_SP_CLIENT_SECRET} \
+        --tenant {CUSTOMER_TENANT_ID}
 
-2.  **Get Initial MI Token (for assertion):**
-    ```bash
-    # Use the audience configured in the federated credential as the resource
-    az account get-access-token --resource api://AzureADTokenExchange --output json
-    ```
-    *(This should succeed and return a token if the UAMI is configured correctly. Save this token if needed for manual `curl` tests.)*
-
-3.  **Attempt Direct Storage Access (Will Fail):**
-    ```bash
+    # Access storage via PE
     az storage blob list \
         --account-name {CUSTOMER_STORAGE_ACCOUNT_NAME} \
         --container-name {CUSTOMER_CONTAINER_NAME} \
         --auth-mode login \
         --output table
     ```
-    * This command is **expected to fail** with an authorization error (403) because `az storage` doesn't perform the required cross-tenant token exchange. It demonstrates that the Tenant A token isn't directly valid in Tenant B for this flow.
 
-### Testing End-to-End (Python Example)
+### Partial Verification with CLI (Federation Scenario)
 
-Use the accompanying Python script (`federated_storage_access.py`) after configuring the placeholder variables. This script performs the full flow: MI token acquisition, token exchange, and storage access using the federated token via the SDK.
+* Use these commands on the VM assigned the UAMI in Tenant A:
 
-**Key Python Logic (See `federated_storage_access.py` for full code):**
+    ```bash
+    # 1. Login as UAMI
+    az login --identity -u {UAMI_CLIENT_ID}
 
-1.  **Configuration:** Set variables like `{CUSTOMER_TENANT_ID}`, `{UAMI_CLIENT_ID}`, `{APP_REG_CLIENT_ID}`, `{CUSTOMER_STORAGE_ACCOUNT_NAME}`, etc.
-2.  **Get MI Token:** Use `ManagedIdentityCredential(client_id=UAMI_CLIENT_ID)` to represent the UAMI. Get the initial token: `mi_token = mi_credential.get_token("api://AzureADTokenExchange")` (or use `get_bearer_token_provider`).
-3.  **Exchange Token:** POST to `https://login.microsoftonline.com/{CUSTOMER_TENANT_ID}/oauth2/v2.0/token` with:
-    * `client_id={APP_REG_CLIENT_ID}` (**Provider's** App Reg ID)
-    * `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`
-    * `client_assertion=<MI_TOKEN_STRING>`
-    * `scope=https://storage.azure.com/.default`
-    * `grant_type=client_credentials`
-4.  **Parse Federated Token:** Extract the `access_token` (federated token) from the JSON response.
-5.  **Wrap Token:** Create the SDK credential: `federated_credential = BearerTokenCredential(<FEDERATED_TOKEN_STRING>)`. (Requires `from azure.identity import BearerTokenCredential`).
-6.  **Use with SDK:** Initialize the client: `client = BlobServiceClient(account_url=..., credential=federated_credential)`. Then perform storage operations.
+    # 2. Get initial token (for assertion) - Should SUCCEED
+    az account get-access-token --resource api://AzureADTokenExchange --output json
 
----
-
-## Alternative: Client Credentials Provided by Tenant B
-
-If Tenant B prefers to provide credentials for an identity *within their own tenant* that has access to the storage account (instead of consenting to the Tenant A app), they can create a separate Service Principal in Tenant B, grant it IAM roles on the storage, and provide Tenant A with its Client ID and a Client Secret (or Certificate).
-
-Tenant A's application would then authenticate directly using these client credentials against Tenant B.
-
-**Example using Azure CLI (run from anywhere):**
-
-```bash
-# Login using SP details provided by Tenant B
-az login --service-principal \
-    -u {TENANT_B_SP_CLIENT_ID} \
-    -p {TENANT_B_SP_CLIENT_SECRET} \
-    --tenant {CUSTOMER_TENANT_ID}
-```
-
-# Access storage (assuming network path via PE exists if PE is enforced)
-```bash
-az storage blob list \
-    --account-name {CUSTOMER_STORAGE_ACCOUNT_NAME} \
-    --container-name {CUSTOMER_CONTAINER_NAME} \
-    --auth-mode login \
-    --output table
-Note: Network connectivity via the Private Endpoint from Tenant A must still be functional if public access is disabled.
-```
+    # 3. Attempt direct storage access - Should FAIL (403)
+    az storage blob list \
+        --account-name {CUSTOMER_STORAGE_ACCOUNT_NAME} \
+        --container-name {CUSTOMER_CONTAINER_NAME} \
+        --auth-mode login
+    ```
 
 ---
 
 ## Troubleshooting
 
 * **ImportError (Python):** Ensure `azure-identity>=1.5.0` is installed in the *active* Python environment. Check for conflicting `azure.py` files. Verify the script runs within the activated virtual environment.
-* **Authorization Errors (403 Forbidden) during Storage Access:**
-    * Verify correct IAM role is assigned to `ENTERPRISE_APP_IN_TENANT_B` on the Storage Account in Tenant B.
-    * Allow time for IAM propagation (can take several minutes).
-    * Ensure the token used has the correct scope (`https://storage.azure.com/.default`).
-    * Confirm network connectivity via the Private Endpoint. Perform `nslookup {CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net` from the VM in Tenant A - it should resolve to a private IP. Test connectivity (e.g., `curl -kv https://{CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net`, `Test-NetConnection` on Windows, or similar tools).
-* **Token Exchange Errors (4xx from `login.microsoftonline.com`):**
-    * Verify the Federated Credential details (Issuer, Subject=UAMI Object ID, Audience) on the App Registration in Tenant A are exactly correct.
-    * Ensure the `client_id` used in the exchange request is the Provider App Reg Client ID (`{APP_REG_CLIENT_ID}`).
-    * Ensure the `client_assertion` token (from MI) is valid and not expired.
+* **Authorization Errors (403 Forbidden):**
+    * Verify correct IAM role is assigned to the correct identity (`ENTERPRISE_APP_IN_TENANT_B` for Scenario A, `{TENANT_B_SP_CLIENT_ID}` for Scenario B) on the Storage Account in Tenant B.
+    * Allow time for IAM propagation.
+    * Ensure the final token scope is `https://storage.azure.com/.default`.
+    * Confirm network connectivity via the Private Endpoint (`nslookup`, `curl -kv`, `Test-NetConnection`). Check NSGs on PE subnet.
+* **Token Exchange Errors (4xx - Scenario A):**
+    * Verify Federated Credential details (Issuer, Subject=UAMI Object ID, Audience) on the App Registration in Tenant A.
+    * Ensure the `client_id` in the exchange request is the Provider App Reg Client ID (`{APP_REG_CLIENT_ID}`).
+    * Ensure the MI token (`client_assertion`) is valid.
+* **Client Credential Errors (4xx - Scenario B):**
+    * Verify the correct Tenant B ID, SP Client ID, and SP Client Secret are used.
+    * Ensure the SP exists and the secret hasn't expired/been revoked.
 * **Private Endpoint Connection Issues:**
-    * Confirm Tenant B approved the connection request.
-    * Verify Tenant B provided the correct Storage Account Resource ID for PE creation.
-    * Check Network Security Groups (NSGs) associated with the Private Endpoint subnet in Tenant A are not blocking traffic to the storage private IP on port 443 (HTTPS).
-    * Ensure Private DNS Zone in Tenant A is correctly linked to the VNet and contains the A record for the storage account FQDN.
+    * Confirm Tenant B approved the connection.
+    * Verify Tenant B provided the correct Storage Account Resource ID.
+    * Ensure Private DNS Zone in Tenant A resolves the FQDN to the PE's private IP. Check VNet link.
+
+---
+
+## References
+
+* [Workload identity federation](https://learn.microsoft.com/entra/workload-id/workload-identity-federation)
+* [Azure Identity client library for Python](https://learn.microsoft.com/en-us/python/api/overview/azure/identity-readme?view=azure-python)
+* [Azure Storage authentication with Microsoft Entra ID](https://learn.microsoft.com/azure/storage/common/storage-auth-aad)
+* [What is Azure Private Endpoint?](https://learn.microsoft.com/azure/private-link/private-endpoint-overview)
+* [Azure Private Endpoint DNS configuration](https://learn.microsoft.com/azure/private-link/private-endpoint-dns)
+
+---
+
+## License
+
+MIT License (or specify your chosen license)
