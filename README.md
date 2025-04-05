@@ -2,7 +2,7 @@
 
 This document outlines two scenarios for securely accessing an Azure Storage Account in a customer tenant (Tenant B) from a provider tenant (Tenant A) using Private Endpoints, without exposing secrets.
 
-1.  **Federated Managed Identity (Scenario A):** Uses Azure's workload identity federation to allow a Managed Identity in Tenant A to access storage in Tenant B.
+1.  **Federated Managed Identity (Scenario A):** Uses Azure's workload identity federation to allow a User-Assigned Managed Identity (UAMI) in Tenant A to access storage in Tenant B.
 2.  **Client Credentials (Scenario B):** Uses a Service Principal created and managed by Tenant B, with credentials provided to Tenant A.
 
 > **Note:** Replace placeholder values (like `{PROVIDER_TENANT_ID}`, `{UAMI_CLIENT_ID}`, etc.) with your actual values throughout this guide.
@@ -17,12 +17,7 @@ This document outlines two scenarios for securely accessing an Azure Storage Acc
 - [Prerequisites](#prerequisites)
 - [Setup Instructions](#setup-instructions)
   - [Scenario A: Federated Managed Identity Setup](#scenario-a-federated-managed-identity-setup)
-    - [Tenant A (Provider) Configuration](#tenant-a-provider-configuration)
-    - [Generate Admin Consent URL](#generate-admin-consent-url)
-    - [Tenant B (Customer) Configuration](#tenant-b-customer-configuration)
   - [Scenario B: Client Credentials Setup](#scenario-b-client-credentials-setup)
-    - [Tenant B (Customer) Configuration](#tenant-b-customer-configuration-1)
-    - [Tenant A (Provider) Configuration](#tenant-a-provider-configuration-1)
   - [Common: Private Endpoint & DNS Setup](#common-private-endpoint--dns-setup)
 - [Testing Access](#testing-access)
   - [Testing Scenario A (Federation - Python Example)](#testing-scenario-a-federation---python-example)
@@ -74,72 +69,92 @@ Follow the relevant setup steps based on the chosen scenario. The Private Endpoi
 
 1.  **Identify/Create UAMI:** Ensure a UAMI exists in Tenant A. Note its **Client ID** (`{UAMI_CLIENT_ID}`) and **Object ID** (`{UAMI_OBJECT_ID}`). Note the **Tenant A ID** (`{PROVIDER_TENANT_ID}`).
 2.  **Identify/Create App Registration:** Ensure a multi-tenant App Registration exists in Tenant A. Note its **Client ID** (`{APP_REG_CLIENT_ID}`).
-3.  **Add Federated Credential:** On the App Registration (`{APP_REG_CLIENT_ID}`), add a Federated Credential:
+3.  **Add Federated Credential:** On the App Registration (`{APP_REG_CLIENT_ID}`), add a Federated Credential via **Certificates & secrets** -> **Federated credentials**:
     * **Issuer:** `https://login.microsoftonline.com/{PROVIDER_TENANT_ID}/v2.0`
     * **Subject:** `{UAMI_OBJECT_ID}` (UAMI's Object ID)
     * **Audience:** `api://AzureADTokenExchange`
 
 #### Generate Admin Consent URL
 
-Construct this URL for the Tenant B admin:
+Construct this URL for the Tenant B admin (replace placeholders):
 
 `https://login.microsoftonline.com/{CUSTOMER_TENANT_ID}/adminconsent?client_id={APP_REG_CLIENT_ID}&redirect_uri=https://localhost`
 
 #### Tenant B (Customer) Configuration
 
-1.  **Grant Admin Consent:** The Tenant B admin uses the URL above to consent, creating an **Enterprise Application** (`ENTERPRISE_APP_IN_TENANT_B`) in Tenant B.
-2.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> IAM, assign the required role (e.g., `Storage Blob Data Contributor`) to the `ENTERPRISE_APP_IN_TENANT_B`.
-3.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A for Private Endpoint creation.
+1.  **Grant Admin Consent:** The Tenant B admin uses the URL above to consent. This creates an **Enterprise Application** (`ENTERPRISE_APP_IN_TENANT_B`) in Tenant B.
+2.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> **Access control (IAM)**, assign the required role (e.g., `Storage Blob Data Contributor`) to the `ENTERPRISE_APP_IN_TENANT_B`.
+3.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A.
 
 ### Scenario B: Client Credentials Setup
 
 #### Tenant B (Customer) Configuration
 
-1.  **Create Service Principal:** Create a new App Registration and corresponding Service Principal (`TENANT_B_SP`) *within Tenant B*.
-2.  **Generate Credentials:** Create a client secret (or certificate) for `TENANT_B_SP`. Securely store the secret value.
-3.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> IAM, assign the required role (e.g., `Storage Blob Data Contributor`) directly to the `TENANT_B_SP`.
-4.  **Provide Credentials:** Securely share the **Tenant B ID** (`{CUSTOMER_TENANT_ID}`), the **Service Principal Client ID** (`{TENANT_B_SP_CLIENT_ID}`), and the **Client Secret** with the application owner in Tenant A.
-5.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A for Private Endpoint creation.
+1.  **Create Service Principal:** Create a new App Registration and corresponding Service Principal (`TENANT_B_SP`) *within Tenant B*. Note its **Client ID** (`{TENANT_B_SP_CLIENT_ID}`).
+2.  **Generate Credentials:** Create a **client secret** (or certificate) for `TENANT_B_SP`. Securely record the **secret value** (`{TENANT_B_SP_CLIENT_SECRET}`).
+3.  **Assign RBAC Role:** On the target Storage Account (`{CUSTOMER_STORAGE_ACCOUNT_NAME}`) -> **Access control (IAM)**, assign the required role (e.g., `Storage Blob Data Contributor`) directly to the `TENANT_B_SP`.
+4.  **Provide Credentials:** Securely share the Tenant B ID (`{CUSTOMER_TENANT_ID}`), SP Client ID (`{TENANT_B_SP_CLIENT_ID}`), and the Client Secret value with Tenant A.
+5.  **Provide Storage Account Resource ID:** Give the full Resource ID of the storage account to Tenant A.
 
 #### Tenant A (Provider) Configuration
 
-1.  **Store Credentials:** Securely store/configure the credentials received from Tenant B for the application to use (e.g., environment variables, Key Vault).
+1.  **Store Credentials:** The application in Tenant A must securely access the credentials provided by Tenant B (e.g., via environment variables, configuration files, Azure Key Vault).
 
 ### Common: Private Endpoint & DNS Setup
 
 1.  **Tenant A: Create Private Endpoint:**
-    * In Tenant A's VNet (`provider-vnet`), create a Private Endpoint.
-    * Connect using the **Resource ID** of the Tenant B Storage Account.
-    * Target sub-resource: `blob`.
-    * Integrate with Private DNS Zone `privatelink.blob.core.windows.net` linked to `provider-vnet`.
+    * In Tenant A's VNet (`provider-vnet`), initiate **Create a private endpoint**.
+    * On the **Resource** tab, select **Connect to an Azure resource by resource ID or alias**.
+    * Paste the **Storage Account Resource ID** provided by Tenant B.
+    * The **Target sub-resource** should automatically populate (e.g., `blob`). Verify it's correct.
+    * On the **Virtual network** tab, select the VNet (`provider-vnet`) and subnet for the endpoint.
+    * On the **DNS** tab, select **Yes** for **Integrate with private DNS zone**. Choose or create the zone `privatelink.blob.core.windows.net` and ensure it's linked to `provider-vnet`.
+    * Review and create. A connection request is sent to Tenant B.
+
 2.  **Tenant B: Approve Private Endpoint Connection:**
-    * On the Storage Account -> Networking -> Private endpoint connections, **Approve** the request from Tenant A.
+    The owner of the Storage Account (or a user with appropriate permissions like `Microsoft.Storage/storageAccounts/privateEndpointConnections/write`) in Tenant B must approve the connection request.
+
+    * **Using the Azure Portal:**
+        1.  Navigate to the target **Storage Account** in the Azure Portal for Tenant B.
+        2.  In the left-hand menu under **Security + networking**, select **Networking**.
+        3.  Click the **Private endpoint connections** tab.
+        4.  Locate the connection request from Tenant A; its status will be "Pending".
+        5.  Select the pending connection by checking the box next to it.
+        6.  Click the **Approve** button at the top of the list.
+        7.  (Optional) Add a description in the approval dialog.
+        8.  Click **Yes** to confirm the approval.
+
+    *(CLI/PowerShell methods can also be used - see References for documentation)*
 
 ---
 
 ## Testing Access
 
-Ensure tests are run from a location with network connectivity to the Private Endpoint (e.g., the VM in `provider-vnet`).
+Ensure tests are run from a location within Tenant A's VNet that can resolve the Private DNS Zone and reach the Private Endpoint's IP address (e.g., the VM in `provider-vnet`).
 
 ### Testing Scenario A (Federation - Python Example)
 
-* Use the accompanying Python script (`federated_storage_access.py`).
-* Configure placeholders (`UAMI_CLIENT_ID`, `APP_REG_CLIENT_ID`, tenant IDs, storage details).
-* The script performs: MI Token Acquisition -> Token Exchange -> Storage SDK Client Creation (using `BearerTokenCredential`) -> List Blobs.
+* Use the accompanying Python script (e.g., `federated_storage_access.py`).
+* Configure placeholders in the script (`UAMI_CLIENT_ID`, `APP_REG_CLIENT_ID`, tenant IDs, storage details).
+* **Script Logic:**
+    1.  Acquire initial token using `ManagedIdentityCredential`.
+    2.  Exchange token via POST request to Tenant B token endpoint.
+    3.  Wrap federated token using `BearerTokenCredential`.
+    4.  Create `BlobServiceClient` using the `BearerTokenCredential`.
+    5.  Perform storage operation (e.g., list blobs).
 
 ### Testing Scenario B (Client Credentials - CLI Example)
 
-* Use credentials provided by Tenant B.
-* Run from a machine with network access to the Private Endpoint (e.g., VM in Tenant A, assuming appropriate routing/NSGs).
+* Use credentials (`{TENANT_B_SP_CLIENT_ID}`, `{TENANT_B_SP_CLIENT_SECRET}`) provided by Tenant B.
 
     ```bash
-    # Login using SP details provided by Tenant B
+    # 1. Login using Tenant B SP credentials
     az login --service-principal \
         -u {TENANT_B_SP_CLIENT_ID} \
         -p {TENANT_B_SP_CLIENT_SECRET} \
         --tenant {CUSTOMER_TENANT_ID}
 
-    # Access storage via PE
+    # 2. Access storage via PE (ensure network path allows)
     az storage blob list \
         --account-name {CUSTOMER_STORAGE_ACCOUNT_NAME} \
         --container-name {CUSTOMER_CONTAINER_NAME} \
@@ -152,13 +167,13 @@ Ensure tests are run from a location with network connectivity to the Private En
 * Use these commands on the VM assigned the UAMI in Tenant A:
 
     ```bash
-    # 1. Login as UAMI
+    # 1. Login as UAMI (Should SUCCEED)
     az login --identity -u {UAMI_CLIENT_ID}
 
-    # 2. Get initial token (for assertion) - Should SUCCEED
+    # 2. Get initial token for assertion (Should SUCCEED)
     az account get-access-token --resource api://AzureADTokenExchange --output json
 
-    # 3. Attempt direct storage access - Should FAIL (403)
+    # 3. Attempt direct storage access (Should FAIL - 403)
     az storage blob list \
         --account-name {CUSTOMER_STORAGE_ACCOUNT_NAME} \
         --container-name {CUSTOMER_CONTAINER_NAME} \
@@ -169,23 +184,23 @@ Ensure tests are run from a location with network connectivity to the Private En
 
 ## Troubleshooting
 
-* **ImportError (Python):** Ensure `azure-identity>=1.5.0` is installed in the *active* Python environment. Check for conflicting `azure.py` files. Verify the script runs within the activated virtual environment.
+* **ImportError (Python):** Ensure `azure-identity>=1.5.0` is installed in the *active* Python environment. Check for conflicting `azure.py` files. Verify script execution within the activated virtual environment.
 * **Authorization Errors (403 Forbidden):**
-    * Verify correct IAM role is assigned to the correct identity (`ENTERPRISE_APP_IN_TENANT_B` for Scenario A, `{TENANT_B_SP_CLIENT_ID}` for Scenario B) on the Storage Account in Tenant B.
-    * Allow time for IAM propagation.
-    * Ensure the final token scope is `https://storage.azure.com/.default`.
-    * Confirm network connectivity via the Private Endpoint (`nslookup`, `curl -kv`, `Test-NetConnection`). Check NSGs on PE subnet.
+    * Verify correct IAM role is assigned to the correct identity (`ENTERPRISE_APP_IN_TENANT_B` for Scen. A, `{TENANT_B_SP_CLIENT_ID}` for Scen. B) on the Storage Account in Tenant B.
+    * Allow time for IAM propagation (minutes).
+    * Ensure final token scope is `https://storage.azure.com/.default`.
+    * Confirm network connectivity via PE (`nslookup`, `curl -kv`, `Test-NetConnection`). Check NSGs.
 * **Token Exchange Errors (4xx - Scenario A):**
-    * Verify Federated Credential details (Issuer, Subject=UAMI Object ID, Audience) on the App Registration in Tenant A.
-    * Ensure the `client_id` in the exchange request is the Provider App Reg Client ID (`{APP_REG_CLIENT_ID}`).
-    * Ensure the MI token (`client_assertion`) is valid.
+    * Verify Federated Credential (Issuer, Subject=UAMI Object ID, Audience) on Tenant A App Reg.
+    * Ensure `client_id` in exchange request is Provider App Reg Client ID (`{APP_REG_CLIENT_ID}`).
+    * Ensure MI token (`client_assertion`) is valid (not expired).
 * **Client Credential Errors (4xx - Scenario B):**
-    * Verify the correct Tenant B ID, SP Client ID, and SP Client Secret are used.
-    * Ensure the SP exists and the secret hasn't expired/been revoked.
-* **Private Endpoint Connection Issues:**
-    * Confirm Tenant B approved the connection.
-    * Verify Tenant B provided the correct Storage Account Resource ID.
-    * Ensure Private DNS Zone in Tenant A resolves the FQDN to the PE's private IP. Check VNet link.
+    * Verify correct Tenant B ID, SP Client ID, and SP Client Secret.
+    * Ensure SP exists and secret is valid.
+* **Private Endpoint / DNS Issues:**
+    * Confirm Tenant B approved the PE connection.
+    * Verify correct Storage Account Resource ID used for PE creation.
+    * Ensure Private DNS Zone in Tenant A resolves FQDN to the PE private IP from within the VNet. Check VNet link. Check for conflicting DNS settings.
 
 ---
 
@@ -196,9 +211,10 @@ Ensure tests are run from a location with network connectivity to the Private En
 * [Azure Storage authentication with Microsoft Entra ID](https://learn.microsoft.com/azure/storage/common/storage-auth-aad)
 * [What is Azure Private Endpoint?](https://learn.microsoft.com/azure/private-link/private-endpoint-overview)
 * [Azure Private Endpoint DNS configuration](https://learn.microsoft.com/azure/private-link/private-endpoint-dns)
+* [Approve or reject private endpoint connection using Azure portal](https://learn.microsoft.com/en-us/azure/private-link/approve-private-endpoint-connection-portal) (Referenced for Portal steps)
 
 ---
 
 ## License
 
-MIT License (or specify your chosen license)
+MIT License
