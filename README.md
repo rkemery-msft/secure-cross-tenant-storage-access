@@ -258,28 +258,20 @@ az storage blob list \
     --output table
 Note: Network connectivity via the Private Endpoint from Tenant A must still be functional if public access is disabled.
 
-Troubleshooting
-ImportError (Python): Ensure azure-identity>=1.5.0 is installed in the active Python environment. Check for conflicting azure.py files. Verify the script runs within the activated virtual environment.
-Authorization Errors (403 Forbidden) during Storage Access:
-Verify correct IAM role is assigned to ENTERPRISE_APP_IN_TENANT_B on the Storage Account in Tenant B.
-Allow time for IAM propagation (can take several minutes).
-Ensure the token used has the correct scope (https://storage.azure.com/.default).
-Confirm network connectivity via the Private Endpoint. Perform nslookup {CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net from the VM in Tenant A - it should resolve to a private IP. Test connectivity (e.g., curl -kv https://{CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net, Test-NetConnection).
-Token Exchange Errors (4xx from login.microsoftonline.com):
-Verify the Federated Credential details (Issuer, Subject=UAMI Object ID, Audience) on the App Registration in Tenant A are exactly correct.
-Ensure the client_id used in the exchange request is the Provider App Reg Client ID ({APP_REG_CLIENT_ID}).
-Ensure the client_assertion token (from MI) is valid and not expired.
-Private Endpoint Connection Issues:
-Confirm Tenant B approved the connection request.
-Verify Tenant B provided the correct Storage Account Resource ID for PE creation.
-Check Network Security Groups (NSGs) associated with the Private Endpoint subnet in Tenant A are not blocking traffic to the storage private IP on port 443.
-Ensure Private DNS Zone in Tenant A is correctly linked to the VNet and contains the A record.
-References
-Workload identity federation
-Azure Identity client library for Python   
-Azure Storage authentication with Microsoft Entra ID
-What is Azure Private Endpoint?
-Azure Private Endpoint DNS configuration
-Blog: Access Cloud Resources Across Tenants Without Secrets (Good background)
-License
-This project is licensed under the MIT License.
+## Troubleshooting
+
+* **ImportError (Python):** Ensure `azure-identity>=1.5.0` is installed in the *active* Python environment. Check for conflicting `azure.py` files. Verify the script runs within the activated virtual environment.
+* **Authorization Errors (403 Forbidden) during Storage Access:**
+    * Verify correct IAM role is assigned to `ENTERPRISE_APP_IN_TENANT_B` on the Storage Account in Tenant B.
+    * Allow time for IAM propagation (can take several minutes).
+    * Ensure the token used has the correct scope (`https://storage.azure.com/.default`).
+    * Confirm network connectivity via the Private Endpoint. Perform `nslookup {CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net` from the VM in Tenant A - it should resolve to a private IP. Test connectivity (e.g., `curl -kv https://{CUSTOMER_STORAGE_ACCOUNT_NAME}.blob.core.windows.net`, `Test-NetConnection` on Windows, or similar tools).
+* **Token Exchange Errors (4xx from `login.microsoftonline.com`):**
+    * Verify the Federated Credential details (Issuer, Subject=UAMI Object ID, Audience) on the App Registration in Tenant A are exactly correct.
+    * Ensure the `client_id` used in the exchange request is the Provider App Reg Client ID (`{APP_REG_CLIENT_ID}`).
+    * Ensure the `client_assertion` token (from MI) is valid and not expired.
+* **Private Endpoint Connection Issues:**
+    * Confirm Tenant B approved the connection request.
+    * Verify Tenant B provided the correct Storage Account Resource ID for PE creation.
+    * Check Network Security Groups (NSGs) associated with the Private Endpoint subnet in Tenant A are not blocking traffic to the storage private IP on port 443 (HTTPS).
+    * Ensure Private DNS Zone in Tenant A is correctly linked to the VNet and contains the A record for the storage account FQDN.
