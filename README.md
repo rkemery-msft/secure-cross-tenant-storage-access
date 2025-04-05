@@ -258,6 +258,8 @@ az storage blob list \
     --output table
 Note: Network connectivity via the Private Endpoint from Tenant A must still be functional if public access is disabled.
 
+---
+
 ## Troubleshooting
 
 * **ImportError (Python):** Ensure `azure-identity>=1.5.0` is installed in the *active* Python environment. Check for conflicting `azure.py` files. Verify the script runs within the activated virtual environment.
