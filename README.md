@@ -1,4 +1,4 @@
-# Azure Cross-Tenant Access via Private Endpoint
+# Azure Cross-Tenant Access via Private Endpoint using Private Link
 
 This document outlines two scenarios for securely accessing an Azure Storage Account in a customer tenant (Tenant B) from a provider tenant (Tenant A) using Private Endpoints, without exposing secrets.
 
@@ -6,6 +6,18 @@ This document outlines two scenarios for securely accessing an Azure Storage Acc
 2.  **Client Credentials (Scenario B):** Uses a Service Principal created and managed by Tenant B, with credentials provided to Tenant A.
 
 > **Note:** Replace placeholder values (like `{PROVIDER_TENANT_ID}`, `{UAMI_CLIENT_ID}`, etc.) with your actual values throughout this guide.
+
+#### Important Context: Cross-Tenant Federation with Managed Identity (Scenario A)
+
+* **Limited Documentation & Recency:** This specific method (cross-tenant Managed Identity federation) is relatively new, with examples emerging around late 2024. Documentation focused on this end-to-end flow can be less comprehensive than for other established methods.
+
+* **Manual Token Exchange Required:** Unlike simpler authentication flows within `azure-identity`, this scenario currently requires manually implementing the token exchange process in your code:
+    1.  Acquire the initial token from the Managed Identity (scoped for `api://AzureADTokenExchange`).
+    2.  POST this token (as a `client_assertion`) via an HTTP request to the *customer* tenant's token endpoint to receive the final, federated token scoped for the target resource (e.g., `https://storage.azure.com/.default`).
+
+* **Python SDK Usage:** While the *final* federated token obtained from the exchange **can** be used effectively with standard Azure SDK clients (like `BlobServiceClient`) by wrapping it in `BearerTokenCredential` (although I never personally found BearerTokenCredential was implemented in import), the token exchange step *itself* is not fully abstracted into a simple credential call within the `azure-identity` library for this specific flow at this time. The REST API example provided earlier bypasses the Storage SDK client entirely.
+
+* **Simpler Alternative (Client Credentials):** Using the Client Credentials flow (Scenario B), where Tenant B creates a dedicated Service Principal and provides its credentials (Client ID/Secret) to Tenant A, is often more straightforward and benefits from more extensive documentation and examples for cross-tenant access, *if* this credential management approach is acceptable for your requirements.
 
 ---
 
@@ -211,7 +223,8 @@ Ensure tests are run from a location within Tenant A's VNet that can resolve the
 * [Azure Storage authentication with Microsoft Entra ID](https://learn.microsoft.com/azure/storage/common/storage-auth-aad)
 * [What is Azure Private Endpoint?](https://learn.microsoft.com/azure/private-link/private-endpoint-overview)
 * [Azure Private Endpoint DNS configuration](https://learn.microsoft.com/azure/private-link/private-endpoint-dns)
-* [Approve or reject private endpoint connection using Azure portal](https://learn.microsoft.com/en-us/azure/private-link/approve-private-endpoint-connection-portal) (Referenced for Portal steps)
+* [Effortlessly access cloud resources across Azure tenants without using secrets](https://devblogs.microsoft.com/identity/access-cloud-resources-across-tenants-without-secrets/)
+* [Azure Private Link](https://learn.microsoft.com/en-us/azure/private-link/private-link-overview)
 
 ---
 
